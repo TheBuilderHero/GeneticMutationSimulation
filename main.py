@@ -1,115 +1,97 @@
 import numpy as np
-import numpy.random as npr
 import random
-import re
-
-pop_size = 30  # initial population size (N)
-max_gen = 50   # cap for number of generations
-p_mut = 0.05   # chance of a mutation
-
-
-# https://stackoverflow.com/questions/10324015/fitness-proportionate-selection-roulette-wheel-selection-in-python
-def roulette_wheel(pop, fit_scores):                # proportional selection function
-    invert_fitness = [1.0 / f for f in fit_scores]  # have to invert for minimization
-    fit_sum = sum(invert_fitness)                   # will be close to "1.0"
-    selection_prob = [f / fit_sum for f in invert_fitness]
-    return population[npr.choice(len(pop), p=selection_prob)]  # higher number twice as likely to be selected
-
-
-def mutation(pop):
-    mutation_amount = random.uniform(pop - 1, pop + 1)  # specifies the range of the mutation
-    mutated_value = pop + mutation_amount               # adds the random amount to the genome
-    return mutated_value
-
-
-def remove_dots(a_str, b_str):
-    match_1 = re.search(r'\.{2}', a_str)  # checks both strings for ".."
-    match_2 = re.search(r'\.{2}', b_str)  # removes a "." and place in other string if found
-
-    if match_1:
-        index = match_1.start()
-        a_str = re.sub(r'\.{2,}', '.', a_str)
-
-        b_str = b_str[:index] + '.' + b_str[index:]
-        return a_str, b_str
-    elif match_2:
-        index = match_2.start()
-        b_str = re.sub(r'\.{2,}', '.', b_str)
-
-        a_str = a_str[:index] + '.' + a_str[index:]
-        return a_str, b_str
-    else:
-        return a_str, b_str
-
-
-# https://www.geeksforgeeks.org/python-single-point-crossover-in-genetic-algorithm/
-def crossover(a, b):
-    if random.random() < 0.1:  # 10% chance of nothing happening since P(c) = 0.90
-        return a, b
-    else:
-        # converts floats to char list
-        str_a = str(a)
-        a_list = list(str_a)
-
-        str_b = str(b)
-        b_list = list(str_b)
-
-        # stops problem of strings being two different sizes by adding zeros to the end of the list
-        max_length = max(len(a_list), len(b_list))
-        a_list += ['0'] * (max_length - len(a_list))
-        b_list += ['0'] * (max_length - len(b_list))
-
-        k = random.randint(1, len(a_list))  # creates a cross-over point
-        # print("Crossover point :", k)
-
-        # interchanging the genes
-        for j in range(k, len(a_list)):
-            a_list[j], b_list[j] = b_list[j], a_list[j]
-
-        a_list = ''.join(a_list)
-        b_list = ''.join(b_list)
-
-        a_list, b_list = remove_dots(a_list, b_list)
-
-        return float(a_list), float(b_list)  # returns new float numbers after breeding
 
 
 def f_equation(x):
-    return x[0] ** 2 + x[1] ** 2 + x[2] ** 2  # function for assigning fitness using minimum
+    return x[0] ** 2 + x[1] ** 2 + x[2] ** 2  # custom-provided function for assigning fitness
+
+
+def mutation(mut_children):  # uses gene-wise mutation
+    for row in mut_children:
+        if random.random() < 0.05:  # mutations have a 5% chance of occurring
+            gene_index = np.random.choice(len(row))
+            selected_gene = row[gene_index]
+            new_gene = random.uniform(selected_gene - 1, selected_gene + 1)  # creates range for new mutant gene
+            row[gene_index] = new_gene                                       # replaced with new gene based on indices
+
+
+def crossover(pairs):
+    child = np.empty((0, 3), dtype=float)  # Initialize an empty array for results
+
+    index = random.choice([1, 2])
+
+    for pair in pairs:
+        ind_1, ind_2 = pair  # create individuals 1 & 2 based on pairs
+
+        if random.random() < 0.1:  # 10% chance that crossover is skipped (P(c) = 90%)
+            # add values if they're skipped
+            child = np.vstack((child, ind_1))
+            child = np.vstack((child, ind_2))
+            continue
+
+        # print("Individual 1:", ind_1)
+        # print("Individual 2:", ind_2)
+
+        temp = ind_1[index].copy()  # swaps third column
+        ind_1[index] = ind_2[index]
+        ind_2[index] = temp
+
+        if index == 1:  # swaps second column
+            temp_2 = ind_1[index + 1].copy()
+            ind_1[index + 1] = ind_2[index + 1]
+            ind_2[index + 1] = temp_2
+
+            child = np.vstack((child, ind_1))
+            child = np.vstack((child, ind_2))
+        else:
+            # add values even if only third column is swapped
+            child = np.vstack((child, ind_1))
+            child = np.vstack((child, ind_2))
+
+    return child
+
+
+"""https://gist.github.com/rocreguant/e9f2481f4e9842dd76e9c61f653eb7c0
+   adapted from above source for individuals instead of chromosomes"""
+def proportional_selection(population, fitness_scores):
+    total_fitness = sum(fitness_scores)
+
+    # PSEUDOCODE: prob = f(x)/(sum of f(x) array) -> total of array will be close to "1"
+    prob = [fitness / total_fitness for fitness in fitness_scores]
+
+    pairs = []  # empty array to store 15 pairs (N = 30)
+    for i in range(15):
+        # "weights=prob" means individuals with higher weights are more often to be picked
+        indices = random.choices(range(len(population)), weights=prob, k=2)  # k=2 creates pairs of 2
+        pairs.append([population[i] for i in indices])
+
+    return pairs
 
 
 if __name__ == "__main__":
-    population = []  # empty array to store fitness values from generated bounds
-    fit_values = []
-    mut_values = []
+    gen = 2         # used for tracking generation number
 
-    new_gen = []
+    genes = np.random.uniform(-4, 5, size=(30, 3))         # initializes array of random values -4 <= x <= 5
+    print(f"Gen {gen - 1}:\n", genes)                           # initial population, N = 30
 
-    genes = np.random.uniform(low=-5.0, high=4.0, size=(pop_size, 3))  # 30 rows of 3 generated
+    # generate fitness numbers
+    fit_score = (np.apply_along_axis(f_equation, 1, genes))  # flip sign for maximization/minimization
+    print("Fitness Scores 2:", genes)
+    selection_pairs = proportional_selection(genes, fit_score)  # use proportional selection
+    children = crossover(selection_pairs)                       # crossover selection
+    mutation(children)                                          # mutation (5% chance)
 
-    for gen in range(max_gen):
-        population = np.apply_along_axis(f_equation, 1, genes)  # 'axis=1' for performing an operation per row
+    print(f"Gen {gen}:\n", children)
+    print("Fitness Score 2:", fit_score)
 
-        pop_sum = np.sum(population)
-        fit_values = population / pop_sum  # prob = f(x)/(sum of f(x) array) -> total of array will be close to "1"
+    for i in range(48):
+        gen = gen + 1
+        print(f"Gen {gen}:\n", children)
 
-    for i in range(15):  # 15 if half of N (N = 30)
-        while True:
-            par_a = roulette_wheel(population, fit_values)
-            par_b = roulette_wheel(population, fit_values)
+        fit_score = np.apply_along_axis(f_equation, 1, children)
+        selection_pairs = proportional_selection(children, fit_score)
+        children = crossover(selection_pairs)
+        mutation(children)
 
-            if par_a != par_b:  # can't mate with itself
-                break
+        print(f"Fitness Score {gen}:\n", fit_score)
 
-        new_gen = np.append(new_gen, crossover(par_a, par_b))
-
-        # p_mut = 0.05 => this means there is a 5% chance of mutation occurring
-        mut_values = np.array([
-            mutation(value) if random.random() < p_mut else value
-            for value in new_gen
-        ])
-
-    print("First gen:")
-    print(population)
-    print("\nNew gen:")
-    print(mut_values)
