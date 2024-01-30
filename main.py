@@ -1,5 +1,6 @@
 import numpy as np
 import random
+import matplotlib.pyplot as plt
 
 
 def f_equation(x):
@@ -85,6 +86,11 @@ if __name__ == "__main__":
     print(f"Gen {gen}:\n", children)
     print("Fitness Score 2:", fit_score)
 
+    
+    plt.title('Average Fitness Score over generataions')
+    plt.xlabel('Generations')
+    plt.ylabel('Average Fitness Value')
+
     for i in range(48):
         gen = gen + 1
         print(f"Gen {gen}:\n", children)
@@ -95,5 +101,7 @@ if __name__ == "__main__":
         mutation(children)
 
         print(f"Fitness Score {gen}:\n", fit_score)
+        plt.plot(gen,fit_score.mean(), 'bo')
+    plt.show()
 
 
