@@ -71,12 +71,13 @@ def proportional_selection(population, fitness_scores):
 if __name__ == "__main__":
     gen = 2         # used for tracking generation number
 
+    np.random.seed(seed=42)
     genes = np.random.uniform(-4, 5, size=(30, 3))         # initializes array of random values -4 <= x <= 5
     print(f"Gen {gen - 1}:\n", genes)                           # initial population, N = 30
 
     # generate fitness numbers
     fit_score = (np.apply_along_axis(f_equation, 1, genes))  # flip sign for maximization/minimization
-    print("Fitness Scores 2:", genes)
+    print("Fitness Scores 2:", fit_score)
     selection_pairs = proportional_selection(genes, fit_score)  # use proportional selection
     children = crossover(selection_pairs)                       # crossover selection
     mutation(children)                                          # mutation (5% chance)
@@ -94,4 +95,5 @@ if __name__ == "__main__":
         mutation(children)
 
         print(f"Fitness Score {gen}:\n", fit_score)
+
 
